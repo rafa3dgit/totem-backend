@@ -1,8 +1,6 @@
 fastapi
 uvicorn[standard]
 openai
-rembg
-onnxruntime
 pillow
 qrcode
 python-multipart
