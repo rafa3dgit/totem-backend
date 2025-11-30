@@ -78,6 +78,13 @@ def ping():
 
 # ------------------------------------------------------------
 # ROTA PRINCIPAL: /compose
+# - Recebe a foto do Unity
+# - Redimensiona + prepara a imagem da pessoa
+# - Carrega o cenário
+# - Chama OpenAI Images com as duas imagens
+# - Salva imagem final
+# - Gera QR code para a URL da imagem
+# - Devolve final_url + qr_url para o Unity
 # ------------------------------------------------------------
 @app.post("/compose")
 async def compose(request: Request, file: UploadFile = File(...)):
@@ -90,14 +97,14 @@ async def compose(request: Request, file: UploadFile = File(...)):
             person_img = Image.open(io.BytesIO(raw_bytes)).convert("RGB")
         except Exception:
             return JSONResponse(
-                {"detail": "Arquivo enviado não é uma imagem válida."},
+                {"detail": "Arquivo enviado não é uma imagem de imagem válida."},
                 status_code=400
             )
 
         # ----------------------------------------------------
         # 2) Reduzir tamanho da foto da pessoa (pra aliviar memória)
         # ----------------------------------------------------
-        max_dim = 512
+        max_dim = 1024
         w, h = person_img.size
         scale = min(max_dim / float(w), max_dim / float(h), 1.0)
         if scale < 1.0:
@@ -126,8 +133,8 @@ async def compose(request: Request, file: UploadFile = File(...)):
                 status_code=500
             )
 
-        # Redimensionar cenário para 512x512 (mais rápido)
-        bg = bg.resize((512, 512), Image.LANCZOS)
+        # Redimensionar cenário para 1024x1024
+        bg = bg.resize((1024, 1024), Image.LANCZOS)
 
         bbuf = io.BytesIO()
         bg.save(bbuf, "PNG")
@@ -144,7 +151,7 @@ async def compose(request: Request, file: UploadFile = File(...)):
                     ("scene.png",  bg_png),
                 ],
                 prompt=PROMPT,
-                size="512x512",
+                size="1024x1024",
             )
         except Exception as e:
             return JSONResponse(
