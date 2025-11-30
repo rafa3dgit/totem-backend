@@ -56,7 +56,7 @@ Use a SEGUNDA imagem como cenário (um navio).
 - recorte a pessoa da primeira imagem
 - insira a pessoa em pé, em primeiro plano, centralizada, olhando para a câmera
 - combine iluminação, sombras e cores com o cenário
-- estilizar como desenho da disney pixar
+- não estilizar como desenho; manter estilo fotográfico realista
 
 Retorne uma única imagem final com a pessoa inserida no cenário do navio.
 """.strip()
@@ -78,13 +78,6 @@ def ping():
 
 # ------------------------------------------------------------
 # ROTA PRINCIPAL: /compose
-# - Recebe a foto do Unity
-# - Redimensiona + prepara a imagem da pessoa
-# - Carrega o cenário
-# - Chama OpenAI Images com as duas imagens
-# - Salva imagem final
-# - Gera QR code para a URL da imagem
-# - Devolve final_url + qr_url para o Unity
 # ------------------------------------------------------------
 @app.post("/compose")
 async def compose(request: Request, file: UploadFile = File(...)):
@@ -97,7 +90,7 @@ async def compose(request: Request, file: UploadFile = File(...)):
             person_img = Image.open(io.BytesIO(raw_bytes)).convert("RGB")
         except Exception:
             return JSONResponse(
-                {"detail": "Arquivo enviado não é uma imagem de imagem válida."},
+                {"detail": "Arquivo enviado não é uma imagem válida."},
                 status_code=400
             )
 
@@ -133,7 +126,7 @@ async def compose(request: Request, file: UploadFile = File(...)):
                 status_code=500
             )
 
-        # Redimensionar cenário para 512x512
+        # Redimensionar cenário para 512x512 (mais rápido)
         bg = bg.resize((512, 512), Image.LANCZOS)
 
         bbuf = io.BytesIO()
