@@ -26,6 +26,7 @@ SCENE_FILE = os.path.join(ASSETS_DIR, "ship_day_4k.jpg")
 
 # Garante que as pastas existem
 os.makedirs(ASSETS_DIR, exist_ok=True)
+os.makedirs(STATIC_DIR, exist_ok=True)
 os.makedirs(FOTOS_DIR, exist_ok=True)
 os.makedirs(QR_DIR, exist_ok=True)
 
@@ -65,7 +66,7 @@ Estilo fotorealista, alta nitidez, sem reestilização.
 # ------------------------------------------------------------
 @app.get("/")
 def root():
-    """Rota simples para testar se a API está de pé."""
+    """Rota simples para testar se a API está online."""
     return {"status": "ok", "message": "Totem IA backend rodando."}
 
 
