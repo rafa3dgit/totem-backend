@@ -5,3 +5,4 @@ rembg
 onnxruntime
 pillow
 qrcode
+python-multipart
