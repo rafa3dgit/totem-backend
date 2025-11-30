@@ -56,7 +56,7 @@ Use a SEGUNDA imagem como cenário (um navio).
 - recorte a pessoa da primeira imagem
 - insira a pessoa em pé, em primeiro plano, centralizada, olhando para a câmera
 - combine iluminação, sombras e cores com o cenário
-- não estilizar como desenho; manter estilo fotográfico realista
+- estilizar como desenho da disney pixar
 
 Retorne uma única imagem final com a pessoa inserida no cenário do navio.
 """.strip()
