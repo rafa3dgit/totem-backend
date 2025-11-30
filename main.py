@@ -104,7 +104,7 @@ async def compose(request: Request, file: UploadFile = File(...)):
         # ----------------------------------------------------
         # 2) Reduzir tamanho da foto da pessoa (pra aliviar memória)
         # ----------------------------------------------------
-        max_dim = 1024
+        max_dim = 512
         w, h = person_img.size
         scale = min(max_dim / float(w), max_dim / float(h), 1.0)
         if scale < 1.0:
@@ -133,8 +133,8 @@ async def compose(request: Request, file: UploadFile = File(...)):
                 status_code=500
             )
 
-        # Redimensionar cenário para 1024x1024
-        bg = bg.resize((1024, 1024), Image.LANCZOS)
+        # Redimensionar cenário para 512x512
+        bg = bg.resize((512, 512), Image.LANCZOS)
 
         bbuf = io.BytesIO()
         bg.save(bbuf, "PNG")
@@ -151,7 +151,7 @@ async def compose(request: Request, file: UploadFile = File(...)):
                     ("scene.png",  bg_png),
                 ],
                 prompt=PROMPT,
-                size="1024x1024",
+                size="512x512",
             )
         except Exception as e:
             return JSONResponse(
