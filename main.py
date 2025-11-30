@@ -7,7 +7,6 @@ from fastapi import FastAPI, UploadFile, File, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from rembg import remove
 from openai import OpenAI
 from PIL import Image
 import qrcode
@@ -35,7 +34,7 @@ os.makedirs(QR_DIR, exist_ok=True)
 # ------------------------------------------------------------
 app = FastAPI(
     title="Totem IA Backend",
-    description="Backend FastAPI para totem (Unity) com OpenAI + rembg + QR Code",
+    description="Backend FastAPI para totem (Unity) com OpenAI + QR Code",
     version="1.0.0",
 )
 
@@ -46,19 +45,20 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 client = OpenAI()
 
 # ------------------------------------------------------------
-# PROMPT PARA OPENAI (ajuste o texto se quiser outro estilo)
+# PROMPT PARA OPENAI (sem rembg, IA faz o recorte)
 # ------------------------------------------------------------
 PROMPT = """
 Use a PRIMEIRA imagem como referência exata da pessoa:
 - mantenha rosto, idade, expressão, cabelo, tom de pele e roupa
 - não alterar logos, cores ou texto da roupa
 
-Insira essa pessoa de corpo inteiro no cenário da SEGUNDA imagem.
-- posição: em pé, centralizada, olhando para a câmera
-- escala realista
-- combinar iluminação e sombras com o cenário
+Use a SEGUNDA imagem como cenário (um navio).
+- recorte a pessoa da primeira imagem
+- insira a pessoa em pé, em primeiro plano, centralizada, olhando para a câmera
+- combine iluminação, sombras e cores com o cenário
+- não estilizar como desenho; manter estilo fotográfico realista
 
-Estilo fotorealista, alta nitidez, sem reestilização.
+Retorne uma única imagem final com a pessoa inserida no cenário do navio.
 """.strip()
 
 # ------------------------------------------------------------
@@ -79,9 +79,9 @@ def ping():
 # ------------------------------------------------------------
 # ROTA PRINCIPAL: /compose
 # - Recebe a foto do Unity
-# - Remove fundo (rembg)
-# - Junta com cenário
-# - Chama OpenAI Images
+# - Redimensiona + prepara a imagem da pessoa
+# - Carrega o cenário
+# - Chama OpenAI Images com as duas imagens
 # - Salva imagem final
 # - Gera QR code para a URL da imagem
 # - Devolve final_url + qr_url para o Unity
@@ -94,26 +94,30 @@ async def compose(request: Request, file: UploadFile = File(...)):
         # ----------------------------------------------------
         raw_bytes = await file.read()
         try:
-            person_raw = Image.open(io.BytesIO(raw_bytes)).convert("RGBA")
+            person_img = Image.open(io.BytesIO(raw_bytes)).convert("RGB")
         except Exception:
             return JSONResponse(
-                {"detail": "Arquivo enviado não é uma imagem válida."},
+                {"detail": "Arquivo enviado não é uma imagem de imagem válida."},
                 status_code=400
             )
 
         # ----------------------------------------------------
-        # 2) Remover o fundo da pessoa (rembg)
+        # 2) Reduzir tamanho da foto da pessoa (pra aliviar memória)
         # ----------------------------------------------------
-        try:
-            person_cut = remove(person_raw)  # retorna um PIL Image também
-        except Exception as e:
-            return JSONResponse(
-                {"detail": f"Erro ao remover fundo (rembg): {e}"},
-                status_code=500
-            )
+        max_dim = 1024
+        w, h = person_img.size
+        scale = min(max_dim / float(w), max_dim / float(h), 1.0)
+        if scale < 1.0:
+            new_size = (int(w * scale), int(h * scale))
+            person_img = person_img.resize(new_size, Image.LANCZOS)
+
+        # Converter para PNG bytes
+        pbuf = io.BytesIO()
+        person_img.save(pbuf, "PNG")
+        person_png = pbuf.getvalue()
 
         # ----------------------------------------------------
-        # 3) Carregar o cenário (navio, etc.)
+        # 3) Carregar o cenário
         # ----------------------------------------------------
         if not os.path.exists(SCENE_FILE):
             return JSONResponse(
@@ -122,39 +126,22 @@ async def compose(request: Request, file: UploadFile = File(...)):
             )
 
         try:
-            bg = Image.open(SCENE_FILE).convert("RGBA")
+            bg = Image.open(SCENE_FILE).convert("RGB")
         except Exception as e:
             return JSONResponse(
                 {"detail": f"Erro ao abrir cenário: {e}"},
                 status_code=500
             )
 
-        # ----------------------------------------------------
-        # 4) Redimensionar para 1024x1024 (mais leve para IA)
-        # ----------------------------------------------------
-        target_size = (1024, 1024)
-        bg = bg.resize(target_size, Image.LANCZOS)
-
-        # Redimensionar a pessoa para ~70% da altura da imagem
-        max_h = int(target_size[1] * 0.7)
-        scale = max_h / person_cut.height
-        new_w = int(person_cut.width * scale)
-        new_h = int(person_cut.height * scale)
-        person_resized = person_cut.resize((new_w, new_h), Image.LANCZOS)
-
-        # ----------------------------------------------------
-        # 5) Converter pessoa + cenário para PNG (bytes) para a OpenAI
-        # ----------------------------------------------------
-        pbuf = io.BytesIO()
-        person_resized.save(pbuf, "PNG")
-        person_png = pbuf.getvalue()
+        # Redimensionar cenário para 1024x1024
+        bg = bg.resize((1024, 1024), Image.LANCZOS)
 
         bbuf = io.BytesIO()
         bg.save(bbuf, "PNG")
         bg_png = bbuf.getvalue()
 
         # ----------------------------------------------------
-        # 6) Chamar OpenAI Images (edição)
+        # 4) Chamar OpenAI Images (edição usando as duas imagens)
         # ----------------------------------------------------
         try:
             result = client.images.edit(
@@ -189,7 +176,7 @@ async def compose(request: Request, file: UploadFile = File(...)):
             )
 
         # ----------------------------------------------------
-        # 7) Salvar imagem final com ID único
+        # 5) Salvar imagem final com ID único
         # ----------------------------------------------------
         img_id = str(uuid.uuid4())
         foto_filename = f"{img_id}.jpg"
@@ -205,16 +192,15 @@ async def compose(request: Request, file: UploadFile = File(...)):
             )
 
         # ----------------------------------------------------
-        # 8) Montar base_url a partir da requisição (funciona local e na nuvem)
-        #     ex: http://127.0.0.1:8000 ou https://meuapp.onrender.com
+        # 6) Montar base_url a partir da requisição (funciona local e na nuvem)
         # ----------------------------------------------------
-        base_url = str(request.base_url).rstrip("/")  # tira / extra do final
+        base_url = str(request.base_url).rstrip("/")  # ex: https://seu-servico.onrender.com
 
         # URL pública da foto final
         foto_url = f"{base_url}/static/fotos/{foto_filename}"
 
         # ----------------------------------------------------
-        # 9) Gerar QR CODE apontando para foto_url
+        # 7) Gerar QR CODE apontando para foto_url
         # ----------------------------------------------------
         qr_img = qrcode.make(foto_url)
         qr_filename = f"{img_id}.png"
@@ -231,7 +217,7 @@ async def compose(request: Request, file: UploadFile = File(...)):
         qr_url = f"{base_url}/static/qr/{qr_filename}"
 
         # ----------------------------------------------------
-        # 10) Retornar URLs para o Unity
+        # 8) Retornar URLs para o Unity
         # ----------------------------------------------------
         return {
             "final_url": foto_url,
