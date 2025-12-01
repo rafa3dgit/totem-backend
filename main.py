@@ -51,7 +51,7 @@ client = OpenAI()                                           # Cria o cliente Ope
 # PROMPT PARA OPENAI (agora pensando em VÁRIAS pessoas)
 # ------------------------------------------------------------
 PROMPT = """
-Use a PRIMEIRA imagem como referência das pessoas:
+Use a PRIMEIRA imagem como referência da pessoa:
 - manter o rosto, idade, expressão, cabelo, tom de pele e roupas de cada pessoa
 - não alterar logos, cores ou textos presentes nas roupas
 
