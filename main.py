@@ -56,7 +56,7 @@ Use a PRIMEIRA imagem como referência da pessoa:
 - não alterar logos, cores ou textos presentes nas roupas
 
 Use a SEGUNDA imagem como cenário (um navio).
-- recortar TODAS as pessoas da primeira imagem
+- recortar a pessoa da primeira imagem
 - inserir todas em pé, em primeiro plano, centralizadas, olhando para a câmera
 - manter a posição relativa entre elas (quem está à esquerda continua à esquerda, etc.)
 - combinar iluminação, sombras e cores com o cenário
