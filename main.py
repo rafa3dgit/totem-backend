@@ -60,7 +60,7 @@ Use a SEGUNDA imagem como cenário (um navio).
 - inserir todas em pé, em primeiro plano, centralizadas, olhando para a câmera
 - manter a posição relativa entre elas (quem está à esquerda continua à esquerda, etc.)
 - combinar iluminação, sombras e cores com o cenário
-- estilizar como desenho 3D da Disney/Pixar
+- estilizar como desenho 2D da Disney/Pixar
 
 Retorne uma única imagem final com todas as pessoas inseridas no cenário do navio.
 """.strip()                                                 # Remove espaços extras no começo/fim do texto
@@ -203,7 +203,7 @@ async def compose(request: Request, file: UploadFile = File(...)):  # Função a
                 composed = Image.new("RGBA", frame.size, (0, 0, 0, 0))  # Imagem vazia com transparência
 
                 # Cola a foto final no fundo
-                composed.paste(final_img, (0, 280))           # Coloca a foto como fundo (ocupa toda a área)
+                composed.paste(final_img, (50, 250))           # Coloca a foto como fundo (ocupa toda a área)
 
                 # Cola a moldura por cima, usando o próprio alfa da moldura
                 composed.paste(frame, (0, 0), frame)        # Coloca a moldura sobre a foto, respeitando a transparência
