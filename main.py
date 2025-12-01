@@ -197,13 +197,13 @@ async def compose(request: Request, file: UploadFile = File(...)):  # Função a
                 frame = Image.open(FRAME_FILE).convert("RGBA")  # Abre a moldura como RGBA (usa o alfa do PNG)
 
                 # Garante que a imagem final tenha o mesmo tamanho da moldura
-                final_img = final_img.resize(frame.size, Image.LANCZOS)  # Redimensiona a imagem final para o tamanho da moldura
+               # final_img = final_img.resize(frame.size, Image.LANCZOS)  # Redimensiona a imagem final para o tamanho da moldura
 
                 # Cria uma nova imagem transparente para montar tudo
                 composed = Image.new("RGBA", frame.size, (0, 0, 0, 0))  # Imagem vazia com transparência
 
                 # Cola a foto final no fundo
-                composed.paste(final_img, (0, 0))           # Coloca a foto como fundo (ocupa toda a área)
+                composed.paste(final_img, (25, 270))           # Coloca a foto como fundo (ocupa toda a área)
 
                 # Cola a moldura por cima, usando o próprio alfa da moldura
                 composed.paste(frame, (0, 0), frame)        # Coloca a moldura sobre a foto, respeitando a transparência
