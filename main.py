@@ -206,7 +206,7 @@ async def compose(request: Request, file: UploadFile = File(...)):  # Função a
                 composed.paste(final_img, (0, 0))           # Coloca a foto como fundo (ocupa toda a área)
 
                 # Cola a moldura por cima, usando o próprio alfa da moldura
-                composed.paste(frame, (0, 0), frame)        # Coloca a moldura sobre a foto, respeitando a transparência
+                composed.paste(frame, (100, 0), frame)        # Coloca a moldura sobre a foto, respeitando a transparência
 
                 # Converte de volta para RGB para salvar em JPG
                 final_img = composed.convert("RGB")         # Remove o canal alfa para salvar como JPG
