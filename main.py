@@ -179,7 +179,7 @@ async def compose(request: Request, file: UploadFile = File(...)):
         # 5) Salvar imagem final com ID único
         # ----------------------------------------------------
         img_id = str(uuid.uuid4())
-        foto_filename = f"{img_id}.jpg"}
+        foto_filename = f"{img_id}.jpg"
         foto_path = os.path.join(FOTOS_DIR, foto_filename)
 
         try:
