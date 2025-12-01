@@ -58,7 +58,7 @@ Use a PRIMEIRA imagem como referência da pessoa:
 Use a SEGUNDA imagem como cenário.
 - recortar a pessoa da primeira imagem
 - inserir todas em pé, em primeiro plano, centralizadas, olhando para a câmera
-- manter a posição relativa entre elas (quem está à esquerda continua à esquerda, etc.)
+
 - combinar iluminação, sombras e cores com o cenário
 - estilizar como desenho 3D da Disney/Pixar
 
