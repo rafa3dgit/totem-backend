@@ -203,7 +203,7 @@ async def compose(request: Request, file: UploadFile = File(...)):  # Função a
                 composed = Image.new("RGBA", frame.size, (0, 0, 0, 0))  # Imagem vazia com transparência
 
                 # Cola a foto final no fundo
-                composed.paste(final_img, (50, 250))           # Coloca a foto como fundo (ocupa toda a área)
+                composed.paste(final_img, (20, 270))           # Coloca a foto como fundo (ocupa toda a área)
 
                 # Cola a moldura por cima, usando o próprio alfa da moldura
                 composed.paste(frame, (0, 0), frame)        # Coloca a moldura sobre a foto, respeitando a transparência
