@@ -52,16 +52,18 @@ client = genai.Client(api_key=GEMINI_API_KEY)               # Cliente da Gemini 
 # PROMPT PARA GEMINI (VÁRIAS PESSOAS + CENÁRIO)
 # ------------------------------------------------------------
 PROMPT = """
-Use a PRIMEIRA imagem como referência da pessoa:
+Use the first image as the main subject reference.
 
-- estilizar como desenho 3D da Disney/Pixar
-- não alterar logos, cores ou textos presentes na roupa
+Transform the person into a high-quality 3D Disney-Pixar–style character, with smooth skin, expressive eyes, soft lighting, and stylized proportions.
+The character must be standing upright (full body, standing pose) in a natural and balanced position.
+Use the second image as the environment reference.
 
-Use a SEGUNDA imagem como cenário.
-- combinar iluminação, sombras e cores com o cenário
-- estilizar como desenho 3D da Disney/Pixar
+Place the 3D character naturally inside this scene, matching the perspective, lighting, color palette, and depth of field of the environment.
+The final image should look like a cinematic Pixar-style render, maintaining the person’s recognizable facial features while fully adapting them to a family-friendly animated 3D style.
+Do not copy any existing Pixar character.
 
-Retorne uma única imagem final com a pessoa etilizada como desenho 3D da Disney/Pixar  inserida no cenário do navio.
+Create an original stylized character inspired by Pixar aesthetics only.
+High resolution, clean render, soft shadows, global illumination, professional animation movie quality.
 """.strip()                                                 # Remove espaços extras no começo/fim do texto
 
 # ------------------------------------------------------------
