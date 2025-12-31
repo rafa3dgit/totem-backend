@@ -53,16 +53,18 @@ client = genai.Client(api_key=GEMINI_API_KEY)               # Cliente da Gemini 
 # ------------------------------------------------------------
 PROMPT = """
 Use the first image as the main subject reference.
+Transform the person into a high-quality 3D Disney-Pixar–style character, while faithfully reproducing physical traits such as hair texture and hairstyle, skin tone, body type, facial proportions, and natural facial expression.
 
-Transform the person into a high-quality 3D Disney-Pixar–style character, with smooth skin, expressive eyes, soft lighting, and stylized proportions.
-The character must be standing upright (full body, standing pose) in a natural and balanced position.
+The character must be standing upright (full body, standing pose) with a natural, relaxed posture.
+
 Use the second image as the environment reference.
+Place the 3D character naturally inside this scene, carefully matching the scene perspective, lighting direction, color palette, and depth of field.
 
-Place the 3D character naturally inside this scene, matching the perspective, lighting, color palette, and depth of field of the environment.
-The final image should look like a cinematic Pixar-style render, maintaining the person’s recognizable facial features while fully adapting them to a family-friendly animated 3D style.
-Do not copy any existing Pixar character.
+The final image should feel like a cinematic Pixar-style render, keeping the person clearly recognizable, but fully adapted into a stylized, family-friendly animated 3D look.
 
-Create an original stylized character inspired by Pixar aesthetics only.
+Do not replicate any existing Pixar character.
+Create an original character inspired by Pixar aesthetics only.
+
 High resolution, clean render, soft shadows, global illumination, professional animation movie quality.
 """.strip()                                                 # Remove espaços extras no começo/fim do texto
 
