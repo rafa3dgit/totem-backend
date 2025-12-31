@@ -52,16 +52,16 @@ client = genai.Client(api_key=GEMINI_API_KEY)               # Cliente da Gemini 
 # PROMPT PARA GEMINI (VÁRIAS PESSOAS + CENÁRIO)
 # ------------------------------------------------------------
 PROMPT = """
-Use a PRIMEIRA imagem como referência das pessoas:
+Use a PRIMEIRA imagem como referência da pessoa:
 
 - estilizar como desenho 3D da Disney/Pixar
-- não alterar logos, cores ou textos presentes nas roupas
+- não alterar logos, cores ou textos presentes na roupa
 
-Use a SEGUNDA imagem como cenário (um navio).
+Use a SEGUNDA imagem como cenário.
 - combinar iluminação, sombras e cores com o cenário
 - estilizar como desenho 3D da Disney/Pixar
 
-Retorne uma única imagem final com todas as pessoas inseridas no cenário do navio.
+Retorne uma única imagem final com a pessoa inserida no cenário do navio.
 """.strip()                                                 # Remove espaços extras no começo/fim do texto
 
 # ------------------------------------------------------------
