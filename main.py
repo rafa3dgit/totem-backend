@@ -53,14 +53,11 @@ client = genai.Client(api_key=GEMINI_API_KEY)               # Cliente da Gemini 
 # ------------------------------------------------------------
 PROMPT = """
 Use a PRIMEIRA imagem como referência das pessoas:
-- manter o rosto, idade, expressão, cabelo, tom de pele e roupas de cada pessoa
-- não alterar logos, cores ou textos presentes nas roupas
+
 - estilizar como desenho 3D da Disney/Pixar
+- não alterar logos, cores ou textos presentes nas roupas
 
 Use a SEGUNDA imagem como cenário (um navio).
-- recortar TODAS as pessoas da primeira imagem
-- inserir todas em pé, em primeiro plano, centralizadas, olhando para a câmera
-- manter a posição relativa entre elas (quem está à esquerda continua à esquerda, etc.)
 - combinar iluminação, sombras e cores com o cenário
 - estilizar como desenho 3D da Disney/Pixar
 
