@@ -8,6 +8,7 @@ from fastapi.staticfiles import StaticFiles                 # Para servir arquiv
 
 from PIL import Image                                       # PIL (Pillow) para tratar imagens
 import qrcode                                               # Biblioteca para gerar QR Codes
+from io import BytesIO  # para abrir bytes como imagem PIL
 
 from google import genai                                    # SDK oficial da Gemini API (google-genai) :contentReference[oaicite:2]{index=2}
 from google.genai import types                              # Tipos auxiliares (config, etc.)
@@ -99,19 +100,18 @@ def gerar_imagem_gemini(person_img: Image.Image, bg_img: Image.Image) -> Image.I
     e devolve um objeto PIL.Image com a imagem final.
     """
 
-    # contents = [texto, imagem1, imagem2] conforme docs de image editing da Gemini :contentReference[oaicite:4]{index=4}
+    # Conteúdo enviado para a Gemini: texto + imagem de pessoas + imagem de cenário
     contents = [
         PROMPT,        # Texto com instruções
-        person_img,    # Primeira imagem: foto com as pessoas
-        bg_img,        # Segunda imagem: cenário (navio)
+        person_img,    # Foto com as pessoas (PIL.Image)
+        bg_img,        # Cenário (PIL.Image)
     ]
 
     try:
         # Chamada à Gemini API para gerar imagem a partir de texto + imagens
         response = client.models.generate_content(
-            model=GEMINI_MODEL,              # Modelo de imagem
-            contents=contents,               # Prompt + imagens
-            # Opcional: podemos limitar só resposta em imagem
+            model=GEMINI_MODEL,
+            contents=contents,
             config=types.GenerateContentConfig(
                 response_modalities=["IMAGE"]   # Queremos apenas imagem de saída
             ),
@@ -120,18 +120,33 @@ def gerar_imagem_gemini(person_img: Image.Image, bg_img: Image.Image) -> Image.I
         # Se der erro na chamada à Gemini, propagamos como exceção
         raise RuntimeError(f"Erro ao chamar Gemini API: {e}")
 
-    final_img = None                         # Vai guardar a imagem final (PIL)
+    # Agora precisamos pegar os BYTES da imagem de dentro da resposta
+    # A resposta costuma vir em response.candidates[x].content.parts[y].inline_data.data
+    for candidate in getattr(response, "candidates", []):      # Percorre os candidatos retornados
+        content = getattr(candidate, "content", None)
+        if content is None:
+            continue
 
-    # Percorre as partes da resposta em busca da imagem
-    for part in response.parts:             # Cada "part" pode ser texto ou imagem
-        # Se esta parte for imagem, a SDK permite converter direto pra PIL
-        img = part.as_image()               # Tenta converter a parte em Image (PIL)
-        if img is not None:                 # Se conseguiu
-            final_img = img                 # Guarda
-            break                           # Sai do laço (pegamos a primeira imagem retornada)
+        for part in getattr(content, "parts", []):             # Cada "part" pode ser texto ou imagem
+            inline_data = getattr(part, "inline_data", None)   # Tenta acessar inline_data (imagem em bytes)
+            if inline_data is None:
+                continue
 
-    if final_img is None:                   # Se não encontrou nenhuma imagem nas partes
-        raise RuntimeError("Resposta da Gemini não contém imagem gerada.")
+            data = getattr(inline_data, "data", None)          # Os bytes reais da imagem
+            if not data:
+                continue
+
+            try:
+                # Converte os bytes em uma imagem PIL
+                img = Image.open(BytesIO(data))                # Abre os bytes como imagem
+                img.load()                                     # Garante que a imagem seja totalmente carregada
+                return img                                     # Devolve a imagem PIL.Image
+            except Exception as e:
+                raise RuntimeError(f"Erro ao abrir imagem retornada pela Gemini: {e}")
+
+    # Se chegou aqui, não encontramos imagem na resposta
+    raise RuntimeError("Resposta da Gemini não contém nenhuma imagem gerada.")
+
 
     return final_img                        # Devolve a imagem PIL.Image
 
