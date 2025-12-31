@@ -61,7 +61,7 @@ Use a SEGUNDA imagem como cenário.
 - combinar iluminação, sombras e cores com o cenário
 - estilizar como desenho 3D da Disney/Pixar
 
-Retorne uma única imagem final com a pessoa inserida no cenário do navio.
+Retorne uma única imagem final com a pessoa etilizada como desenho 3D da Disney/Pixar  inserida no cenário do navio.
 """.strip()                                                 # Remove espaços extras no começo/fim do texto
 
 # ------------------------------------------------------------
