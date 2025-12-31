@@ -55,6 +55,7 @@ PROMPT = """
 Use a PRIMEIRA imagem como referência das pessoas:
 - manter o rosto, idade, expressão, cabelo, tom de pele e roupas de cada pessoa
 - não alterar logos, cores ou textos presentes nas roupas
+- estilizar como desenho 3D da Disney/Pixar
 
 Use a SEGUNDA imagem como cenário (um navio).
 - recortar TODAS as pessoas da primeira imagem
