@@ -1,6 +1,6 @@
 fastapi
 uvicorn[standard]
+openai
 pillow
 qrcode
 python-multipart
-google-genai
