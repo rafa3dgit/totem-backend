@@ -1,17 +1,15 @@
 import os              # Módulo padrão do Python para lidar com caminhos, pastas e arquivos
 import io              # Módulo para trabalhar com streams de bytes na memória (buffer)
 import uuid            # Gera IDs únicos (usado para nomear arquivos sem repetir)
+import base64          # Para converter dados base64 em bytes e vice-versa
 
 from fastapi import FastAPI, UploadFile, File, Request      # FastAPI: framework web; UploadFile/File para receber arquivos, Request para info da requisição
 from fastapi.responses import JSONResponse                  # Resposta em JSON personalizada (permite setar status code)
 from fastapi.staticfiles import StaticFiles                 # Para servir arquivos estáticos (imagens etc.)
 
+from openai import OpenAI                                   # Cliente oficial da OpenAI
 from PIL import Image                                       # PIL (Pillow) para tratar imagens
 import qrcode                                               # Biblioteca para gerar QR Codes
-from io import BytesIO  # para abrir bytes como imagem PIL
-
-from google import genai                                    # SDK oficial da Gemini API (google-genai) :contentReference[oaicite:2]{index=2}
-from google.genai import types                              # Tipos auxiliares (config, etc.)
 
 # ------------------------------------------------------------
 # CONFIGURAÇÃO DE PASTAS
@@ -35,50 +33,37 @@ os.makedirs(FOTOS_DIR, exist_ok=True)                       # Cria a pasta stati
 os.makedirs(QR_DIR, exist_ok=True)                          # Cria a pasta static/qr se não existir
 
 # ------------------------------------------------------------
-# GEMINI API - CONFIG
-# ------------------------------------------------------------
-GEMINI_MODEL = "gemini-2.5-flash-image"                     # Modelo de imagem da Gemini API :contentReference[oaicite:3]{index=3}
-
-# Lê a chave de API da variável de ambiente GEMINI_API_KEY
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")                # Pega a key do ambiente (defina antes de rodar o servidor)
-
-if not GEMINI_API_KEY:                                      # Se a chave não estiver configurada
-    raise RuntimeError("GEMINI_API_KEY não configurada. Defina a variável de ambiente com sua chave da Gemini API.")
-
-# Cria o cliente Gemini
-client = genai.Client(api_key=GEMINI_API_KEY)               # Cliente da Gemini API (Google AI)
-
-# ------------------------------------------------------------
-# PROMPT PARA GEMINI (VÁRIAS PESSOAS + CENÁRIO)
-# ------------------------------------------------------------
-PROMPT = """
-Use the first image as the main subject reference.
-Transform the person into a high-quality 3D Disney-Pixar–style character, while faithfully reproducing physical traits such as hair texture and hairstyle, skin tone, body type, facial proportions, and natural facial expression.
-
-The character must be standing upright (full body, standing pose) with a natural, relaxed posture.
-
-Use the second image as the environment reference.
-Place the 3D character naturally inside this scene, carefully matching the scene perspective, lighting direction, color palette, and depth of field.
-
-The final image should feel like a cinematic Pixar-style render, keeping the person clearly recognizable, but fully adapted into a stylized, family-friendly animated 3D look.
-
-Do not replicate any existing Pixar character.
-Create an original character inspired by Pixar aesthetics only.
-
-High resolution, clean render, soft shadows, global illumination, professional animation movie quality.
-""".strip()                                                 # Remove espaços extras no começo/fim do texto
-
-# ------------------------------------------------------------
 # FASTAPI + STATIC
 # ------------------------------------------------------------
 app = FastAPI(                                              # Cria a aplicação FastAPI
-    title="Totem IA Backend (Gemini)",                      # Título (aparece na documentação /docs)
-    description="Backend FastAPI para totem (Unity) com Gemini + QR Code",  # Descrição da API
-    version="2.0.0",                                        # Versão da API (agora 2.0 com Gemini)
+    title="Totem IA Backend",                               # Título (aparece na documentação /docs)
+    description="Backend FastAPI para totem (Unity) com OpenAI + QR Code",  # Descrição da API
+    version="1.0.0",                                        # Versão da API
 )
 
 # Servir arquivos estáticos (fotos finais e QRs)
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")  # Tudo em STATIC_DIR fica acessível na rota /static
+
+# Cliente da OpenAI (usa OPENAI_API_KEY do ambiente)
+client = OpenAI()                                           # Cria o cliente OpenAI usando variável de ambiente OPENAI_API_KEY
+
+# ------------------------------------------------------------
+# PROMPT PARA OPENAI (agora pensando em VÁRIAS pessoas)
+# ------------------------------------------------------------
+PROMPT = """
+Use a PRIMEIRA imagem como referência da pessoa:
+- manter o rosto, idade, expressão, cabelo, tom de pele e roupas de cada pessoa
+- não alterar logos, cores ou textos presentes nas roupas
+
+Use a SEGUNDA imagem como cenário.
+- recortar a pessoa da primeira imagem
+- inserir todas em pé, em primeiro plano, centralizadas, olhando para a câmera
+
+- combinar iluminação, sombras e cores com o cenário
+- estilizar como desenho 3D da Disney/Pixar
+
+
+""".strip()                                                 # Remove espaços extras no começo/fim do texto
 
 # ------------------------------------------------------------
 # ROTAS DE TESTE / SAÚDE
@@ -86,7 +71,8 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")  # Tudo e
 @app.get("/")                                               # Define a rota GET / (raiz) da API
 def root():                                                 # Função que será executada quando alguém acessar GET /
     """Rota simples para testar se a API está online."""    # Docstring explicando a função
-    return {"status": "ok", "backend": "gemini"}            # Retorna um JSON com status informativo
+    return {"status": "ok", "message": "Totem IA backend rodando."}  # Retorna um JSON com status informativo
+
 
 @app.get("/ping")                                           # Define rota GET /ping
 def ping():                                                 # Função que responde ao ping
@@ -94,70 +80,11 @@ def ping():                                                 # Função que respo
     return {"msg": "pong"}                                  # Retorna JSON simples, útil para ver se o servidor está vivo
 
 # ------------------------------------------------------------
-# FUNÇÃO AUXILIAR: CHAMAR GEMINI E PEGAR A IMAGEM FINAL
-# ------------------------------------------------------------
-def gerar_imagem_gemini(person_img: Image.Image, bg_img: Image.Image) -> Image.Image:
-    """
-    Envia PROMPT + foto da(s) pessoa(s) + cenário para a Gemini
-    e devolve um objeto PIL.Image com a imagem final.
-    """
-
-    # Conteúdo enviado para a Gemini: texto + imagem de pessoas + imagem de cenário
-    contents = [
-        PROMPT,        # Texto com instruções
-        person_img,    # Foto com as pessoas (PIL.Image)
-        bg_img,        # Cenário (PIL.Image)
-    ]
-
-    try:
-        # Chamada à Gemini API para gerar imagem a partir de texto + imagens
-        response = client.models.generate_content(
-            model=GEMINI_MODEL,
-            contents=contents,
-            config=types.GenerateContentConfig(
-                response_modalities=["IMAGE"]   # Queremos apenas imagem de saída
-            ),
-        )
-    except Exception as e:
-        # Se der erro na chamada à Gemini, propagamos como exceção
-        raise RuntimeError(f"Erro ao chamar Gemini API: {e}")
-
-    # Agora precisamos pegar os BYTES da imagem de dentro da resposta
-    # A resposta costuma vir em response.candidates[x].content.parts[y].inline_data.data
-    for candidate in getattr(response, "candidates", []):      # Percorre os candidatos retornados
-        content = getattr(candidate, "content", None)
-        if content is None:
-            continue
-
-        for part in getattr(content, "parts", []):             # Cada "part" pode ser texto ou imagem
-            inline_data = getattr(part, "inline_data", None)   # Tenta acessar inline_data (imagem em bytes)
-            if inline_data is None:
-                continue
-
-            data = getattr(inline_data, "data", None)          # Os bytes reais da imagem
-            if not data:
-                continue
-
-            try:
-                # Converte os bytes em uma imagem PIL
-                img = Image.open(BytesIO(data))                # Abre os bytes como imagem
-                img.load()                                     # Garante que a imagem seja totalmente carregada
-                return img                                     # Devolve a imagem PIL.Image
-            except Exception as e:
-                raise RuntimeError(f"Erro ao abrir imagem retornada pela Gemini: {e}")
-
-    # Se chegou aqui, não encontramos imagem na resposta
-    raise RuntimeError("Resposta da Gemini não contém nenhuma imagem gerada.")
-
-
-    return final_img                        # Devolve a imagem PIL.Image
-
-# ------------------------------------------------------------
 # ROTA PRINCIPAL: /compose
 # - Recebe a foto do Unity
 # - Redimensiona + prepara a imagem da(s) pessoa(s)
 # - Carrega o cenário
-# - Chama Gemini com as duas imagens
+# - Chama OpenAI Images com as duas imagens
 # - Aplica moldura (Photoshop) se existir
 # - Salva imagem final
 # - Gera QR code para a URL da imagem
@@ -188,6 +115,11 @@ async def compose(request: Request, file: UploadFile = File(...)):  # Função a
             new_size = (int(w * scale), int(h * scale))     # Calcula novo tamanho proporcional
             person_img = person_img.resize(new_size, Image.LANCZOS)  # Redimensiona a imagem com filtro de boa qualidade
 
+        # Converter para PNG bytes
+        pbuf = io.BytesIO()                                 # Cria um buffer em memória para guardar a imagem
+        person_img.save(pbuf, "PNG")                        # Salva a imagem da(s) pessoa(s) em formato PNG dentro do buffer
+        person_png = pbuf.getvalue()                        # Extrai os bytes desse buffer
+
         # ----------------------------------------------------
         # 3) Carregar o cenário
         # ----------------------------------------------------
@@ -208,26 +140,55 @@ async def compose(request: Request, file: UploadFile = File(...)):  # Função a
         # Redimensionar cenário para 1024x1024
         bg = bg.resize((1024, 1024), Image.LANCZOS)         # Redimensiona a imagem de cenário para 1024x1024
 
+        bbuf = io.BytesIO()                                 # Cria outro buffer de bytes para o cenário
+        bg.save(bbuf, "PNG")                                # Salva o cenário em PNG no buffer
+        bg_png = bbuf.getvalue()                            # Extrai os bytes desse buffer
+
         # ----------------------------------------------------
-        # 4) Chamar Gemini para gerar imagem final
+        # 4) Chamar OpenAI Images (edição usando as duas imagens)
         # ----------------------------------------------------
-        try:
-            final_img = gerar_imagem_gemini(person_img, bg) # Chama função auxiliar que usa Gemini e devolve um PIL.Image
-        except Exception as e:
-            return JSONResponse(                            # Se der erro, retorna 500 com detalhe
-                {"detail": str(e)},
+        try:                                                # Tenta chamar a API de imagens da OpenAI
+            result = client.images.edit(                    # Chamada para o endpoint de edição de imagens
+                model="gpt-image-1",                        # Modelo de imagem da OpenAI
+                image=[                                     # Lista de imagens de entrada (pessoa(s) e cenário)
+                    ("person.png", person_png),             # Primeira imagem: foto com uma ou mais pessoas
+                    ("scene.png",  bg_png),                 # Segunda imagem: cenário (navio)
+                ],
+                prompt=PROMPT,                              # Prompt com instruções em texto
+                size="1024x1024",                           # Tamanho da imagem de saída
+            )
+        except Exception as e:                              # Se der qualquer erro na chamada da OpenAI
+            return JSONResponse(                            # Retorna erro 500
+                {"detail": f"Erro ao chamar OpenAI Images: {e}"},
+                status_code=500
+            )
+
+        try:                                                # Tenta pegar o campo base64 da resposta
+            final_b64 = result.data[0].b64_json             # Acessa a primeira imagem retornada e pega o base64
+        except Exception:                                   # Se não encontrar o campo
+            return JSONResponse(                            # Retorna erro 500
+                {"detail": "Resposta da OpenAI não contém imagem válida."},
+                status_code=500
+            )
+
+        try:                                                # Tenta decodificar o base64 em bytes
+            final_bytes = base64.b64decode(final_b64)       # Converte a string base64 em bytes de imagem
+        except Exception as e:                              # Se der erro na decodificação
+            return JSONResponse(                            # Retorna erro 500
+                {"detail": f"Erro ao decodificar imagem da OpenAI: {e}"},
                 status_code=500
             )
 
         # ----------------------------------------------------
-        # 5) Aplicar moldura (Photoshop), se existir, e salvar a imagem final
+        # 5) Salvar imagem final com ID único (+ aplicar moldura)
         # ----------------------------------------------------
         img_id = str(uuid.uuid4())                          # Gera um ID único para esta imagem
         foto_filename = f"{img_id}.jpg"                     # Nome do arquivo JPG final
         foto_path = os.path.join(FOTOS_DIR, foto_filename)  # Caminho completo onde será salvo
 
         try:                                                # Tenta montar a imagem final e salvar
-            final_img = final_img.convert("RGBA")           # Garante que está em RGBA (pra poder mexer com alfa)
+            # Abre o resultado da OpenAI como imagem com canal alfa
+            final_img = Image.open(io.BytesIO(final_bytes)).convert("RGBA")  # Converte para RGBA (com transparência)
 
             # ------------------------------------------------
             # 5.1) Tentar carregar a moldura do Photoshop
